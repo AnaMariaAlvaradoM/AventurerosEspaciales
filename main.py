@@ -2,9 +2,7 @@ import pygame
 import random
 import pygame.mixer
 from sprites import *
-from sprites import enemigos  # Importar el grupo 'enemigos' de sprites.py
-from sprites import balas
-
+#Cambios
 # Inicializar Pygame
 pygame.init()
 
@@ -27,7 +25,14 @@ enemigos = pygame.sprite.Group()
 
 nave = NaveEspacial()
 todos_los_sprites.add(nave)
+
 # Crear enemigos iniciales
+def crear_enemigos():
+    for _ in range(10):
+        enemigo = Enemigo()
+        enemigos.add(enemigo)
+        todos_los_sprites.add(enemigo)  # Añadir al grupo de todos los sprites para que se dibuje
+
 crear_enemigos()
 
 # Variables del juego
@@ -44,20 +49,17 @@ def mostrar_texto(mensaje, x, y, color):
     texto_rect = texto.get_rect(center=(x, y))
     screen.blit(texto, texto_rect)
 
-def crear_enemigo():
-    nuevo_enemigo = Enemigo()
-    enemigos.add(nuevo_enemigo)
-
-def crear_enemigos():
-    for _ in range(10):
-        crear_enemigo()
 # Crear balas
 def disparar_bala():
     bala = Bala(nave.rect.centerx, nave.rect.top)
     balas.add(bala)
-    
+    todos_los_sprites.add(bala)
+
 # Bucle principal del juego
 bucle_principal = True
+movimiento_izquierda = False
+movimiento_derecha = False
+
 while bucle_principal:
     # Capturar eventos
     for event in pygame.event.get():
@@ -66,19 +68,26 @@ while bucle_principal:
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
-                nave.mover_izquierda()
+                movimiento_izquierda = True
             if event.key == pygame.K_RIGHT:
-                nave.mover_derecha()
+                movimiento_derecha = True
             if event.key == pygame.K_SPACE:
-                nave.disparar()
-            # Disparar bala al presionar espacio
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-            disparar_bala()        
+                nave.disparar(balas, todos_los_sprites)  # Pasar los grupos balas y todos_los_sprites
+
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_LEFT:
+                movimiento_izquierda = False
+            if event.key == pygame.K_RIGHT:
+                movimiento_derecha = False
+
+    # Mover la nave
+    if movimiento_izquierda:
+        nave.mover_izquierda()
+    if movimiento_derecha:
+        nave.mover_derecha()
 
     # Actualizar sprites
     todos_los_sprites.update()
-    balas.update()
-    enemigos.update()
 
     # Detectar colisiones jugador-enemigo
     colisiones_jugador_enemigo = pygame.sprite.spritecollide(nave, enemigos, False)
@@ -87,27 +96,28 @@ while bucle_principal:
         if vidas == 0:
             bucle_principal = False
             mostrar_texto("¡Game Over!", 400, 300, (255, 0, 0))
+        else:
+            for enemigo in colisiones_jugador_enemigo:
+                enemigo.kill()  # Eliminar el enemigo que colisionó con la nave
 
     # Detectar colisiones enemigo-bala
     colisiones_enemigo_bala = pygame.sprite.groupcollide(enemigos, balas, True, True)
     if colisiones_enemigo_bala:
         for enemigo in colisiones_enemigo_bala:
-            musica_explosion = pygame.mixer.Sound("explosion.wav")
             musica_explosion.play()
             puntuacion += 100
-            crear_enemigo()
+            crear_enemigos()
 
     # Dibujar elementos en la pantalla
     screen.blit(fondo, (0, 0))
     todos_los_sprites.draw(screen)
 
     # Mostrar puntuación y vidas
-    mostrar_texto(f"Puntuación: {puntuacion}", 10, 10, (255, 255, 255))
+    mostrar_texto(f"Puntuación: {puntuacion}", 100, 10, (255, 255, 255))
     mostrar_texto(f"Vidas: {vidas}", 740, 10, (255, 255, 255))
 
     # Actualizar la pantalla y controlar FPS
     pygame.display.flip()
     reloj.tick(60)
 
-# Finalizar Pygame
 pygame.quit()
